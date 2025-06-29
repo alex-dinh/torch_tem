@@ -24,7 +24,7 @@ def inv_var_weight(mus, sigmas):
     inv_var_var = 1.0 / torch.sum(1.0 / (sigmas**2), dim = 0)
     # Calculate inverse variance weighted average
     inv_var_avg = torch.sum(mus / (sigmas**2), dim = 0) * inv_var_var
-    # Convert weigthed variance to sigma
+    # Convert weighted variance to sigma
     inv_var_sigma = torch.sqrt(inv_var_var)
     # And return results
     return inv_var_avg, inv_var_sigma
@@ -49,7 +49,7 @@ def relu(x):
     '''
     Applies rectified linear activation unit to tensors of inputs, using torch relu funcion
     '''     
-    # Return torch relu    
+    # Return torch relu
     return torch.nn.functional.relu(x) 
 
 def leaky_relu(x):
@@ -110,12 +110,12 @@ def make_directories():
     # Initialise the run and dir_check to create a new run folder within the current date
     run = 0
     dir_check = True
-    # Initialise all pahts
+    # Initialise all paths
     train_path, model_path, save_path, script_path, run_path = None, None, None, None, None
     # Find the current run: the first run that doesn't exist yet
     while dir_check:
         # Construct new paths
-        run_path = '../Summaries/' + date + '/run' + str(run) + '/'
+        run_path = 'Summaries/' + date + '/run' + str(run) + '/'
         train_path = run_path + 'train'
         model_path = run_path + 'model'
         save_path = run_path + 'save'
@@ -137,10 +137,10 @@ def set_directories(date, run):
     '''
     Returns directories for storing data during a model training run from a given previous training run
     '''    
-    # Initialise all pahts
+    # Initialise all paths
     train_path, model_path, save_path, script_path, run_path = None, None, None, None, None
     # Find the current run: the first run that doesn't exist yet
-    run_path = '../Summaries/' + date + '/run' + str(run) + '/'
+    run_path = 'Summaries/' + date + '/run' + str(run) + '/'
     train_path = run_path + 'train'
     model_path = run_path + 'model'
     save_path = run_path + 'save'
@@ -156,7 +156,7 @@ def make_logger(run_path):
     # Create new logger    
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    # Remove anly existing handlers so you don't output to old files, or to new files twice
+    # Remove only existing handlers so you don't output to old files, or to new files twice
     logger.handlers = []
     # Create a file handler, but only if the handler does
     handler = logging.FileHandler(run_path + 'report.log')

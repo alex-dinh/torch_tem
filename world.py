@@ -141,7 +141,7 @@ class World:
         is_reward_location[reward_locations] = True
         # Calculate distances between all locations based on adjacency matrix - this doesn't take transition probabilities into account!
         dist_matrix = shortest_path(csgraph=np.array(self.adjacency), directed=True)                      
-        # Fill out minumum distance to any reward state for each action
+        # Fill out minimum distance to any reward state for each action
         for location in new_locations:
             for action in location['actions']:
                 action['d'] = np.min(dist_matrix[is_reward_location, np.array(action['transition']) > 0]) if any(action['transition']) else np.inf
@@ -155,9 +155,9 @@ class World:
         return new_locations
         
     def generate_walks(self, walk_length=10, n_walk=100, repeat_bias_factor=2):
-        # Generate walk by sampling actions accoring to policy, then next state according to graph
+        # Generate walk by sampling actions according to policy, then next state according to graph
         walks = [] # This is going to contain a list of (state, observation, action) tuples
-        for currWalk in range(n_walk):
+        for curr_walk in range(n_walk):
             new_walk = []
             # If shiny hasn't been specified: there are no shiny objects, generate default policy
             if self.shiny is None:
