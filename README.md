@@ -24,27 +24,27 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This is an implementation of the Tolman-Eichenbaum Machine in pytorch, written from scratch by following the Supplementary Material of [the original paper](https://www.biorxiv.org/content/10.1101/770495v2.full). It is extensively annotated and tries to follow the notation and terminology from the publication as closely as possible.
+This is an implementation of the Tolman-Eichenbaum Machine in PyTorch, written from scratch by following the Supplementary Material of [the original paper](https://www.biorxiv.org/content/10.1101/770495v2.full). It is extensively annotated and tries to follow the notation and terminology from the publication as closely as possible.
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-You need to install [python >= 3.6.0](https://www.python.org/downloads/) and [pytorch >= 1.6.0](https://pytorch.org/).
+You need to install [python >= 3.12.0](https://www.python.org/downloads/) and [pytorch >= 2.7.0](https://pytorch.org/).
 
 
 ### Installation
 
 Clone the repo
 ```sh
-git clone https://github.com/jbakermans/torch_tem.git
+git clone https://github.com/alex-dinh/torch_tem.git
 ```
 
 ### Model Training
 
 With the repo as working directory, train a model by running
 ```sh
-python run.py
+python train.py
 ```
 Model parameters are specified in ```parameters.py```.
 

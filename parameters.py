@@ -42,11 +42,11 @@ def parameters():
 
     # -- Training parameters
     # Number of walks to generate
-    params['train_it'] = 10000  # default=20000
+    params['train_it'] = 20000  # default=20000
     # Number of steps to roll out before backpropagation through time
     params['n_rollout'] = 20
     # Batch size: number of walks for training simultaneously
-    params['batch_size'] = 32
+    params['batch_size'] = 8
     # Minimum length of a walk on one environment. Walk lengths are sampled uniformly from a window that shifts down until its lower limit is walk_it_min at the end of training
     params['walk_it_min'] = 25
     # Maximum length of a walk on one environment. Walk lengths are sampled uniformly from a window that starts with its upper limit at walk_it_max in the beginning of training, then shifts down
@@ -189,12 +189,13 @@ def parameters():
     # k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.30, 0.15, 0.8
     # k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.35, 0.15, 0.75  # best so far 6/29/25
     k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.35, 0.15, 0.75
+
+    # combine sfsw and hierarchical embedding
     params['p_update_sfsw_mask'] = create_sfsw_mask(
         sum(params['n_p']), k=k, rewire_prob=rewire_prob,
         hub_percent=hub_percent, hub_connect_percent=hub_connect_percent, random_hubs=True,
         seed=42
-    )
-    mask = get_mask(params['n_p'], params['n_p'], connectivity_matrix(conn_hierarchical, params['n_p']))
+    ) * params['p_update_mask']
 
     # During memory retrieval, hierarchical memory retrieval of grounded location is implemented by early-stopping low-frequency memory updates, using a mask for updates at every retrieval iteration
     # TODO 6/18/25: convert to 2D tensors

@@ -12,14 +12,15 @@ import time
 import glob, os, shutil
 import importlib.util
 from tqdm import tqdm
+import argparse
+import multiprocessing
 
 # Own module imports
 import world
 import utils
 import parameters
 from tem import TEM
-
-import argparse
+from test import test_zero_shot_acc
 
 # CLI arguments
 parser = argparse.ArgumentParser()
@@ -57,9 +58,9 @@ load_existing_model = args.load_checkpoint
 if load_existing_model:
     print('Loading model from checkpoint...')
     # Choose which trained model to load
-    date = '2025-06-27'
+    date = '2025-06-29'
     run = '1'
-    i_start = 7500
+    i_start = 20000
 
     # Set all paths from existing run
     run_path, train_path, model_path, save_path, script_path, envs_path = utils.set_directories(date, run)
@@ -114,15 +115,18 @@ else:
 
     # Create list of environments that we will sample from during training to provide TEM with trajectory input
     # envs = ['./envs/4x4.json', './envs/5x5.json', './envs/10x10.json']
-    envs = ['./envs/4x4.json', './envs/5x5.json', './envs/10x10.json']
+    envs = ['envs/4x4.json', 'envs/5x5.json']
     if not args.debug:
         # Save all environment files that are being used in training in the script directory
         for file in set(envs):
             shutil.copy2(file, os.path.join(envs_path, os.path.basename(file)))
 
 if not args.debug:
-    # Create a tensorboard to stay updated on training progress. Start tensorboard with tensorboard --logdir=runs
+    # Create a tensorboard to stay updated on training progress. Start tensorboard with `tensorboard --logdir=Summaries/`
     writer = SummaryWriter(train_path)
+    if not load_existing_model:
+        writer.add_text('attractor_mode', f'Attractor Mode: {mode.upper()}')
+        writer.add_text('envs', f'Training environments: {', '.join(envs)}')
     # Create a logger to write log output to file
     logger = utils.make_logger(run_path)
 
@@ -142,7 +146,12 @@ walks = [env.generate_walks(params['n_rollout'] * np.random.randint(params['walk
 prev_iter = None
 
 # Train TEM on walks in different environment
-for i in tqdm(range(i_start, params['train_it'])):
+if load_existing_model:
+    i_end = i_start + params['train_it']
+else:
+    i_end = params['train_it']
+
+for i in tqdm(range(i_start, i_end)):
     # Get start time for function timing
     start_time = time.time()
     # Get updated parameters for this backprop iteration
@@ -259,6 +268,11 @@ for i in tqdm(range(i_start, params['train_it'])):
     if (i + 1) % 1000 == 0 and not args.debug:
         torch.save(tem.state_dict(), model_path + '/tem_' + str(i + 1) + '.pt')
         torch.save(tem.hyper, model_path + '/params_' + str(i + 1) + '.pt')
+    # Validation: Compute and log zero-shot accuracy occasionally during training
+    if (i + 1) % 250 == 0 and not args.debug:
+        zs_acc = test_zero_shot_acc(tem, envs, [False, False, True, True], params)
+        writer.add_scalar('Accuracy/zero_shot', zs_acc, i)
+
 
 # Save the final state of the model after training has finished
 torch.save(tem.state_dict(), model_path + '/tem_' + str(i + 1) + '.pt')

@@ -570,10 +570,9 @@ class TEM(torch.nn.Module):
         M_new = torch.squeeze(
             torch.matmul(torch.unsqueeze(p_inferred + p_generated, 2), torch.unsqueeze(p_inferred - p_generated, 1)))
         # Multiply by connection vector, e.g. only keeping weights from low to high frequencies for hierarchical retrieval
-        if do_hierarchical_connections:
+        if do_hierarchical_connections and self.attractor_mode != 'sfsw':
             M_new = M_new * self.hyper['p_update_mask']
-
-        if self.attractor_mode == 'sfsw':
+        elif self.attractor_mode == 'sfsw':
             M_new = M_new * self.hyper['p_update_sfsw_mask']
 
             # plt.imshow(self.hyper['p_update_sfsw_mask'], cmap='plasma', interpolation='none')
