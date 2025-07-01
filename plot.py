@@ -1,17 +1,58 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Mar 30 14:35:30 2020
+'''
+Functions for plotting training and results of TEM
 
-@author: jacobb
-"""
+Plots:
+- Zero-shot prediction accuracy vs training steps
+'''
 
-# Functions for plotting training and results of TEM
 
 # Standard library imports
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+
+
+FONTSIZE = 14
+DPI = 150
+
+def thousands_formatter(x, pos):
+    return f'{int(x / 1000)}K'
+
+def plot_zero_shot_acc():
+    # File names and corresponding labels
+    csv_path = 'data/zeroshot/'
+
+    files = {
+        csv_path + "fc.csv": "FC",
+        csv_path + "he.csv": "HE",
+        csv_path + "sfsw.csv": "SFSW",
+        csv_path + "pa.csv": "PA"
+    }
+
+    plt.figure(figsize=(6, 4))
+
+    # Define the window size for smoothing
+    window_size = 5  # You can adjust this value based on your needs
+
+    for file_name, label in files.items():
+        df = pd.read_csv(file_name)
+        # Apply rolling mean for smoothing
+        df["Value_smoothed"] = df["Value"].rolling(window=window_size, min_periods=1).mean()
+        plt.plot(df["Step"], df["Value_smoothed"], label=label)
+
+    plt.xlabel("Training Step", fontsize=FONTSIZE)
+    plt.ylabel("Zero-shot accuracy", fontsize=FONTSIZE)
+    plt.gca().xaxis.set_major_formatter(FuncFormatter(thousands_formatter))
+    plt.tick_params(axis='both', which='major', labelsize=FONTSIZE)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("plots/zeroshot_training.png", dpi=DPI)
+
+
 
 def plot_weights(models, params = None, steps = None, do_save = False):
     # If no parameter names specified: just take all of the trained ones from the model
@@ -243,7 +284,10 @@ def action_patch(location_from, location_to, radius, colour):
         ydat = location_from['y'] + radius * np.array([2*np.sin((a_dir-np.pi/6)), 2*np.sin((a_dir+np.pi/6)), 3*np.sin((a_dir))])
     # Return action patch for provided data
     return plt.Polygon(np.stack([xdat, ydat], axis=1), color=colour)
-    
+
+
+if __name__ == '__main__':
+    plot_zero_shot_acc()
 
 ## Just for convenience: all parameters in TEM
 #for name, param in model.named_parameters():

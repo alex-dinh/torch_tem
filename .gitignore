@@ -2,4 +2,5 @@
 *.pyc
 *.egg-info
 .idea/
+data/
 Summaries/

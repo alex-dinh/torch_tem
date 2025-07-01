@@ -31,7 +31,7 @@ class TEM(torch.nn.Module):
         # Copy hyperparameters (e.g. network sizes) from parameter dict, usually generated from parameters() in parameters.py
         self.hyper = copy.deepcopy(params)
         # Specify attractor weight connectivity topology mode
-        assert attractor_mode in ['sfsw', 'fc', 'he', 'randomsparse'], "Invalid attractor connectivity mode."
+        assert attractor_mode in ['sfsw', 'fc', 'he', 'pa', 'randomsparse'], "Invalid attractor connectivity mode."
         self.attractor_mode = attractor_mode
         # Create trainable parameters
         self.init_trainable_params()
@@ -582,6 +582,8 @@ class TEM(torch.nn.Module):
             # plt.colorbar(label='Value')
             # plt.grid(False)
             # plt.show(block=False)
+        elif self.attractor_mode == 'pa':
+            M_new = M_new * self.hyper['p_update_pa_mask']
         elif self.attractor_mode == 'randomsparse':
             M_new = M_new * self.hyper['p_update_mask_randomsparse']
         # Store grounded location in attractor network memory with weights M by Hebbian learning of pattern

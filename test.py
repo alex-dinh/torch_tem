@@ -22,11 +22,11 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 # Choose which trained model to load
-date = '2025-06-29'
+date = '2025-06-30'
 # date = 'best_sfsw'
 # date = 'default'
-run = '0'
-index = '5000'
+run = '1_sfsw'
+index = '30000'
 logdir = 'Summaries/'
 attractor_mode = 'sfsw'
 

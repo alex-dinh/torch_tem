@@ -42,7 +42,7 @@ def parameters():
 
     # -- Training parameters
     # Number of walks to generate
-    params['train_it'] = 20000  # default=20000
+    params['train_it'] = 10000  # default=20000
     # Number of steps to roll out before backpropagation through time
     params['n_rollout'] = 20
     # Batch size: number of walks for training simultaneously
@@ -96,20 +96,23 @@ def parameters():
     # -- Model parameters 
     # Decide whether to sample, or assume no noise and simply take mean of all distributions
     params['do_sample'] = False
-    # Decide whether to use inferred ground location while inferring new abstract location, instead of only previous grounded location (James's infer_g_type)
+    # Decide whether to use inferred ground location while inferring new abstract location,
+    # instead of only previous grounded location (James's infer_g_type)
     params['use_p_inf'] = True
-    # Decide whether to use seperate grid modules that recieve shiny information for object vector cells. To disable OVC, set this False, and set n_ovc to [0 for _ in range(len(params['n_g_subsampled']))]
+    # Decide whether to use separate grid modules that receive shiny information for object vector cells.
+    # To disable OVC, set this False, and set n_ovc to [0 for _ in range(len(params['n_g_subsampled']))]
     params['separate_ovc'] = False
-    # Standard deviation for initial initial g (which will then be learned)
+    # Standard deviation for initial g (which will then be learned)
     params['g_init_std'] = 0.5
-    # Standard deviation to initialise hidden to output layer of MLP for inferring new abstract location from memory of grounded location
+    # Standard deviation to initialise hidden to output layer of MLP for inferring new abstract location
+    # from memory of grounded location
     params['g_mem_std'] = 0.1
     # Hidden layer size of MLP for abstract location transitions
     params['d_hidden_dim'] = 20
 
     # ---- Neuron and module parameters
     # Neurons for subsampled entorhinal abstract location f_g(g) for each frequency module
-    params['n_g_subsampled'] = [10, 10, 8, 6, 6]
+    params['n_g_subsampled'] = [10, 10, 8, 6, 6]  # default = [10, 10, 8, 6, 6]
     # Neurons for object vector cells. Neurons will get new modules if object vector cell modules are separated; otherwise, they are added to existing abstract location modules.
     # a) No additional modules, no additional object vector neurons (e.g. when not using shiny environments): [0 for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
     # b) No additional modules, but n additional object vector neurons in each grid module: [n for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
@@ -184,21 +187,32 @@ def parameters():
                 if params['f_initial'][f_from] <= params['f_initial'][f_to]:
                     params['p_update_mask'][n_p[f_from]:n_p[f_from + 1], n_p[f_to]:n_p[f_to + 1]] = 1.0
 
-    # TODO 6/17/25: not a true sparsification, just sets most weights to zero. No reduced compute
+    # TODO 2025/06/17: not a true sparsification, just sets most weights to zero. No reduced compute
     params['p_update_mask_randomsparse'] = create_random_sparse_mask(sum(params['n_p']), sparsity=0.8)
-    # k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.30, 0.15, 0.8
-    # k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.35, 0.15, 0.75  # best so far 6/29/25
-    k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.35, 0.15, 0.75
+    params['sfsw_params'] = {
+        'k': 60, 'rewire_prob': 0.30, 'hub_percent': 0.15, 'hub_connect_percent': 0.8
+    }
+    # k, rewire_prob, hub_percent, hub_connect_percent = 60, 0.35, 0.15, 0.75  # best as of 6/29/25
+    # k, rewire_prob, hub_percent, hub_connect_percent = 8, 0.1, 0.02, 0.15
 
+    k = params['sfsw_params']['k']
+    rewire_prob = params['sfsw_params']['rewire_prob']
+    hub_percent = params['sfsw_params']['hub_percent']
+    hub_connect_percent = params['sfsw_params']['hub_connect_percent']
     # combine sfsw and hierarchical embedding
     params['p_update_sfsw_mask'] = create_sfsw_mask(
-        sum(params['n_p']), k=k, rewire_prob=rewire_prob,
-        hub_percent=hub_percent, hub_connect_percent=hub_connect_percent, random_hubs=True,
-        seed=42
+        sum(params['n_p']), k=k, rewire_prob=rewire_prob, hub_percent=hub_percent,
+        hub_connect_percent=hub_connect_percent, random_hubs=True, seed=42
     ) * params['p_update_mask']
 
+    params['p_update_pa_mask'] = create_network_mask(
+        n_neurons=sum(params['n_p']), topology_type='pa',
+        k=k, rewire_prob=rewire_prob, hub_percent=hub_percent,
+        hub_connect_percent=hub_connect_percent,
+        m_pa=8, seed=42
+    )
+
     # During memory retrieval, hierarchical memory retrieval of grounded location is implemented by early-stopping low-frequency memory updates, using a mask for updates at every retrieval iteration
-    # TODO 6/18/25: convert to 2D tensors
     params['p_retrieve_mask_inf'] = [torch.zeros(sum(params['n_p']), device=DEVICE) for _ in
                                      range(params['i_attractor'])]
     params['p_retrieve_mask_gen'] = [torch.zeros(sum(params['n_p']), device=DEVICE) for _ in
@@ -309,7 +323,7 @@ def create_sfsw_mask(n_neurons=400, k=6, rewire_prob=0.2, hub_percent=0.05, hub_
         random.seed(seed)
         torch.manual_seed(seed)
 
-    mask = torch.zeros((n_neurons, n_neurons), dtype=torch.int8)
+    mask = torch.zeros((n_neurons, n_neurons), dtype=torch.float)
 
     # Step 1: Initialize regular ring lattice
     for i in range(n_neurons):
@@ -355,7 +369,7 @@ def create_sfsw_mask(n_neurons=400, k=6, rewire_prob=0.2, hub_percent=0.05, hub_
     # num_zeros = (mask == 0).sum().item()
     # sparsity =  num_zeros / total_elements
     # print(f'Sparsity: {sparsity}')
-    return mask
+    return mask.to(DEVICE)
 
 
 
@@ -389,6 +403,208 @@ def rand_sparsify(tensor, prob=0.5):
     """
     mask = (tensor == 1) & (torch.rand_like(tensor, dtype=torch.float) < prob)
     return tensor.masked_fill(mask, 0)
+
+def create_network_mask(n_neurons=400, topology_type='sfsw', k=6, rewire_prob=0.2,
+                        hub_percent=0.05, hub_connect_percent=0.5,
+                        m_pa=None,  # New parameter for preferential attachment
+                        random_hubs=True, seed=None):
+    """
+    Creates a connectivity mask for a neural network with various topologies.
+
+    Args:
+        n_neurons (int): Number of neurons in the network.
+        topology_type (str): Type of network topology.
+                             'sfsw': Scale-Free Small-World (default)
+                             'pa': Preferential Attachment (Barabasi-Albert-like)
+        k (int): For 'sfsw', the number of nearest neighbors in the initial ring lattice.
+        rewire_prob (float): For 'sfsw', the probability of rewiring an edge.
+        hub_percent (float): For 'sfsw', percentage of neurons designated as hubs.
+        hub_connect_percent (float): For 'sfsw', percentage of other neurons a hub connects to.
+        m_pa (int): For 'pa', the number of edges a new node forms when connecting to existing nodes.
+                    If None for 'pa', it will be calculated as a fraction of n_neurons.
+        random_hubs (bool): For 'sfsw', if True, hubs are chosen randomly.
+        seed (int, optional): Seed for random number generators for reproducibility.
+
+    Returns:
+        torch.Tensor: A square connectivity mask (n_neurons x n_neurons).
+    """
+
+    if seed is not None:
+        random.seed(seed)
+        torch.manual_seed(seed)
+        np.random.seed(seed)  # Ensure numpy is also seeded if used by random_hubs or future additions
+
+    mask = torch.zeros((n_neurons, n_neurons), dtype=torch.float)
+
+    if topology_type == 'sfsw':
+        # --- Original Scale-Free Small-World Logic (with minor improvements) ---
+
+        # Step 1: Initialize regular ring lattice
+        for i in range(n_neurons):
+            for offset in range(1, k // 2 + 1):
+                j = (i + offset) % n_neurons
+                mask[i][j] = 1
+                mask[j][i] = 1  # Make connections symmetric for initial lattice
+            mask[i][i] = 1  # Allow self-connections
+
+        # Step 2: Rewire connections with given probability (Watts-Strogatz-like)
+        # Modified to ensure symmetric rewiring for existing connections
+        # and bidirectional new connections.
+        edges_to_consider = []
+        for i in range(n_neurons):
+            for j_offset in range(1, k // 2 + 1):
+                j = (i + j_offset) % n_neurons
+                if i < j:  # Consider each unique undirected edge only once
+                    edges_to_consider.append((i, j))
+
+        for i, j in edges_to_consider:
+            if random.random() < rewire_prob:
+                # Remove original bidirectional connection
+                mask[i][j] = 0
+                mask[j][i] = 0
+
+                # Find new target for i
+                possible_targets_i = list(
+                    set(range(n_neurons)) - {i} - {j} - set(torch.nonzero(mask[i]).flatten().tolist()))
+                if possible_targets_i:
+                    new_j_i = random.choice(possible_targets_i)
+                    mask[i][new_j_i] = 1
+                    mask[new_j_i][i] = 1  # New connection is also bidirectional
+
+        # Step 3: Add hub neurons (Scale-Free aspect)
+        n_hubs = int(n_neurons * hub_percent)
+        # Ensure n_hubs is at least 1 if hub_percent > 0 and n_neurons > 0
+        if hub_percent > 0 and n_neurons > 0 and n_hubs == 0:
+            n_hubs = 1
+
+        n_hub_connections = int(n_neurons * hub_connect_percent)
+        # Ensure n_hub_connections is at least 1 if hub_connect_percent > 0 and n_neurons > 1
+        if hub_connect_percent > 0 and n_neurons > 1 and n_hub_connections == 0:
+            n_hub_connections = 1
+
+        if random_hubs:
+            # Ensure we don't try to select more hubs than available neurons
+            n_hubs = min(n_hubs, n_neurons)
+            hub_indices = random.sample(range(n_neurons), n_hubs)
+        else:
+            hub_indices = np.linspace(0, n_neurons - 1, n_hubs, dtype=int)
+
+        for hub in hub_indices:
+            # Targets for hub must not be the hub itself and should be new connections
+            # Collect already connected nodes to avoid redundant connections
+            already_connected = set(torch.nonzero(mask[hub]).flatten().tolist())
+            possible_targets = list(set(range(n_neurons)) - {hub} - already_connected)
+
+            # Ensure we don't try to connect to more neurons than available or needed
+            num_connections = min(n_hub_connections, len(possible_targets))
+
+            if num_connections > 0:
+                targets = random.sample(possible_targets, num_connections)
+                for target in targets:
+                    mask[hub][target] = 1
+                    mask[target][hub] = 1  # Make hub connections symmetric
+
+    elif topology_type == 'pa':
+        # --- Preferential Attachment (Barabasi-Albert-like) Logic ---
+        # This implementation builds the network by adding nodes one by one
+        # and connecting them preferentially to existing nodes with higher degrees.
+        # It assumes an initially connected small graph.
+
+        if m_pa is None:
+            # Default m_pa to a reasonable value, e.g., to ensure average degree is around 4-8
+            # A common choice for m_pa is small, typically 1 to 5.
+            # Let's set a sensible default if not provided, e.g., 2 or 3 connections per new node.
+            m_pa = max(1, int(n_neurons * 0.01))  # At least 1, or 1% of neurons as base for m_pa
+            # If n_neurons is very small, ensure m_pa doesn't exceed n_neurons-1
+            m_pa = min(m_pa, n_neurons - 1 if n_neurons > 1 else 1)
+
+        if m_pa >= n_neurons:
+            raise ValueError(f"m_pa ({m_pa}) must be less than n_neurons ({n_neurons}) for Preferential Attachment.")
+        if m_pa <= 0:
+            raise ValueError("m_pa must be a positive integer for Preferential Attachment.")
+
+        # Step 1: Initialize with a small, fully connected core (m_pa initial nodes forming a clique)
+        # A common practice is to start with m_pa fully connected nodes.
+        initial_nodes_for_pa = m_pa  # Start with m_pa nodes in a clique
+        if n_neurons == 1:
+            mask[0][0] = 1
+            return mask
+
+        # Ensure we don't try to make a clique larger than n_neurons
+        initial_nodes_for_pa = min(initial_nodes_for_pa, n_neurons)
+
+        for i in range(initial_nodes_for_pa):
+            for j in range(initial_nodes_for_pa):
+                if i != j:
+                    mask[i][j] = 1
+                    mask[j][i] = 1  # Ensure symmetric connections
+            mask[i][i] = 1  # Allow self-connections for initial nodes
+
+        # Keep track of degrees for preferential attachment
+        # We need degrees of existing nodes (excluding self-loops) for the PA probability calculation.
+        degrees = [0] * n_neurons
+        for i in range(initial_nodes_for_pa):
+            degrees[i] = int(torch.sum(mask[i, :]) - mask[i, i])  # Degree is count of non-self connections
+
+        # Step 2: Add remaining nodes with preferential attachment
+        for new_node in range(initial_nodes_for_pa, n_neurons):
+            # The probability of connecting to an existing node is proportional to its degree.
+            # We need to select `m_pa` *distinct* existing nodes.
+            existing_nodes = list(range(new_node))
+
+            # If no existing nodes (shouldn't happen with initial_nodes_for_pa >= 1)
+            if not existing_nodes:
+                mask[new_node][new_node] = 1  # Only self-connection if no existing nodes
+                continue
+
+            # Calculate probabilities based on degrees (sum of degrees is 2*E, where E is num edges)
+            # Add a small constant to degrees to ensure all nodes have a non-zero chance,
+            # especially for early nodes with low degrees, and to avoid division by zero
+            # if sum of degrees is 0 (e.g., in a theoretical sparse initial state).
+            degrees_plus_epsilon = [d + 1e-6 for d in degrees[:new_node]]
+            current_degrees_sum_plus_epsilon = sum(degrees_plus_epsilon)
+
+            probabilities = [d_pe / current_degrees_sum_plus_epsilon for d_pe in degrees_plus_epsilon]
+
+            targets = set()
+            # Try to select m_pa distinct targets.
+            # Ensure we don't try to select more targets than available existing nodes.
+            num_targets_to_select = min(m_pa, len(existing_nodes))
+
+            # Sample with replacement initially, then ensure uniqueness
+            sampled_targets_list = random.choices(existing_nodes, weights=probabilities,
+                                                  k=num_targets_to_select * 2)  # Sample more to get distinct ones
+
+            for target_node in sampled_targets_list:
+                if len(targets) < num_targets_to_select and target_node != new_node:
+                    targets.add(target_node)
+                if len(targets) == num_targets_to_select:
+                    break
+
+            # Fallback if not enough distinct targets were found (e.g., very small network)
+            if len(targets) < num_targets_to_select:
+                remaining_needed = num_targets_to_select - len(targets)
+                # Add random additional targets from available if preferential attachment failed to give enough
+                additional_targets = list(set(existing_nodes) - targets - {new_node})
+                if len(additional_targets) > remaining_needed:
+                    targets.update(random.sample(additional_targets, remaining_needed))
+                else:
+                    targets.update(additional_targets)
+
+            for target_node in targets:
+                if new_node != target_node:  # A node cannot connect to itself via PA here (explicitly)
+                    if mask[new_node][
+                        target_node] == 0:  # Only add if not already connected (prevents double counting for degree)
+                        mask[new_node][target_node] = 1
+                        mask[target_node][new_node] = 1  # Make connections symmetric
+                        degrees[new_node] += 1
+                        degrees[target_node] += 1
+            mask[new_node][new_node] = 1  # Allow self-connections for all new neurons
+
+    else:
+        raise ValueError(f"Unknown topology_type: {topology_type}. Choose 'sfsw' or 'pa'.")
+
+    return mask
 
 
 # This specifies how parameters are updated at every backpropagation iteration/gradient update
