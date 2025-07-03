@@ -17,18 +17,20 @@ import world
 import analyse
 import plot
 
+# Constants for plot formatting
+FONTSIZE = 14
+DPI = 150
+
 # Set random seeds for reproducibility
 np.random.seed(0)
 torch.manual_seed(0)
 
 # Choose which trained model to load
-date = '2025-06-30'
-# date = 'best_sfsw'
-# date = 'default'
-run = '1_sfsw'
+date = '2025-07-02'
+run = '1_fc_100_neurons'
 index = '30000'
 logdir = 'Summaries/'
-attractor_mode = 'sfsw'
+attractor_mode = 'lc'
 
 # ------- Utility Functions -------
 def load_tem_and_params():
@@ -132,18 +134,19 @@ if __name__ == '__main__':
 
     # Plot results of agent comparison and zero-shot inference analysis
     filt_size = 41
-    plt.figure()
+    plt.figure(figsize=(6, 4))
     plt.plot(analyse.smooth(np.mean(np.array([env for env_i, env in enumerate(correct_model) if envs_to_avg[env_i]]),0)[1:], filt_size), label='tem')
     plt.plot(analyse.smooth(np.mean(np.array([env for env_i, env in enumerate(correct_node) if envs_to_avg[env_i]]),0)[1:], filt_size), label='node')
     plt.plot(analyse.smooth(np.mean(np.array([env for env_i, env in enumerate(correct_edge) if envs_to_avg[env_i]]),0)[1:], filt_size), label='edge')
     plt.ylim(0, 1)
     plt.legend()
     zs_acc = np.mean([np.mean(env) for env_i, env in enumerate(zero_shot) if envs_to_avg[env_i]]) * 100
-    plt.title(f'Zero-shot inference: {zs_acc:.3f}%')
-    plt.suptitle(f'{date} run{run}, t={index}, mode={attractor_mode}')
-    plt.xlabel('Environment Steps')
-    plt.ylabel('Accuracy')
-    plt.show()
+    plt.title(f'{date} run{run}, t={index}, mode={attractor_mode}\nZero-shot inference: {zs_acc:.3f}%')
+    plt.xlabel('Environment Steps', fontsize=FONTSIZE)
+    plt.ylabel('Accuracy', fontsize=FONTSIZE)
+    plt.tick_params(axis='both', which='major', labelsize=FONTSIZE)
+    plt.tight_layout()
+    plt.show(dpi=DPI)
 
     # Plot rate maps for all cells
     plot.plot_cells(p[env_to_plot], g[env_to_plot], environments[env_to_plot], n_f_ovc=(params['n_f_ovc'] if 'n_f_ovc' in params else 0), columns = 25)

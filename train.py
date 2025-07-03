@@ -20,7 +20,7 @@ import world
 import utils
 import parameters
 from tem import TEM
-from test import test_zero_shot_acc, attractor_mode
+from test import test_zero_shot_acc
 
 # CLI arguments
 parser = argparse.ArgumentParser()
@@ -28,6 +28,8 @@ parser.add_argument('--fc', action='store_true', help='Use fully-connected attra
 parser.add_argument('--he', action='store_true', help='Use hierarchically embedded attractor')
 parser.add_argument('--sfsw', action='store_true', help='Use scale-free, small-world attractor')
 parser.add_argument('--pa', action='store_true', help='Use preferential attachment attractor')
+parser.add_argument('--lc', action='store_true', help='Use locally connected attractor')
+parser.add_argument('--rs', action='store_true', help='Use random sparse attractor')
 parser.add_argument('--debug', action='store_true', help='Use to disable tensorboard logging')
 parser.add_argument('--load_checkpoint', action='store_true', help='Use to continue training from model checkpoint')
 args = parser.parse_args()
@@ -52,6 +54,12 @@ elif args.he:
 elif args.pa:
     mode = 'pa'
     print('Attractor mode: preferential attachment')
+elif args.lc:
+    mode = 'lc'
+    print('Attractor mode: locally connected (gaussian profile)')
+elif args.rs:
+    mode = 'rs'
+    print('Attractor mode: random sparse')
 else:
     mode = 'fc'
     print('Attractor mode: fully-connected')
@@ -62,9 +70,9 @@ load_existing_model = args.load_checkpoint
 if load_existing_model:
     print('Loading model from checkpoint...')
     # Choose which trained model to load
-    date = '2025-06-30'
-    run = '2'
-    i_start = 24000
+    date = '2025-07-01'
+    run = '1_rs'
+    i_start = 1000
 
     # Set all paths from existing run
     run_path, train_path, model_path, save_path, script_path, envs_path = utils.set_directories(date, run)
@@ -80,7 +88,9 @@ if load_existing_model:
     print(f'Successfully loaded model from {params_path}')
 
     # Manually specify certain parameters (like total num of training iterations)
-    new_params = {'train_it': 6000}
+    # TODO 2025/07/02: torch.save()/load() bug is changing to different values for some params -
+    #  manually setting back to original.
+    new_params = {'train_it': 20, 'batch_size': 8, 'eta': 0.5, 'p2g_scale_offset': 0}
     for key in new_params:
         params[key] = new_params[key]
 
@@ -127,12 +137,14 @@ else:
 if not args.debug:
     # Create a tensorboard to stay updated on training progress. Start tensorboard with `tensorboard --logdir=Summaries/`
     writer = SummaryWriter(train_path)
-    if not load_existing_model:
-        writer.add_text('attractor_mode', f'Attractor Mode: {mode.upper()}')
-        writer.add_text('envs', f'Training environments: {", ".join(envs)}')
-        if attractor_mode == 'sfsw':
-            hparams = params['sfsw_params'] | {'n_neurons': sum(params['n_p'])}
-            writer.add_hparams(hparam_dict=hparams, metric_dict={}, run_name='.')
+    # if not load_existing_model:
+    #     hparams = {
+    #         'attractor_mode': mode,
+    #         'envs': ", ".join(envs),
+    #     }
+    #     if mode == 'sfsw':
+    #         hparams = params['sfsw_params'] | {'n_neurons': sum(params['n_p'])} | hparams
+    #     writer.add_hparams(hparam_dict=hparams, metric_dict={}, run_name='.')
     # Create a logger to write log output to file
     logger = utils.make_logger(run_path)
 

@@ -31,7 +31,7 @@ class TEM(torch.nn.Module):
         # Copy hyperparameters (e.g. network sizes) from parameter dict, usually generated from parameters() in parameters.py
         self.hyper = copy.deepcopy(params)
         # Specify attractor weight connectivity topology mode
-        assert attractor_mode in ['sfsw', 'fc', 'he', 'pa', 'randomsparse'], "Invalid attractor connectivity mode."
+        assert attractor_mode in ['fc', 'he', 'lc', 'sfsw', 'pa', 'rs'], "Invalid attractor connectivity mode."
         self.attractor_mode = attractor_mode
         # Create trainable parameters
         self.init_trainable_params()
@@ -572,20 +572,14 @@ class TEM(torch.nn.Module):
         # Multiply by connection vector, e.g. only keeping weights from low to high frequencies for hierarchical retrieval
         if do_hierarchical_connections and self.attractor_mode != 'sfsw':
             M_new = M_new * self.hyper['p_update_mask']
+        elif self.attractor_mode == 'lc':
+            M_new = M_new * self.hyper['p_update_mask_lc']
         elif self.attractor_mode == 'sfsw':
-            M_new = M_new * self.hyper['p_update_sfsw_mask']
-
-            # plt.imshow(self.hyper['p_update_sfsw_mask'], cmap='plasma', interpolation='none')
-            # plot_title = 'p_update_sfsw_mask'
-            # plt.title(plot_title)
-            # print(plot_title)
-            # plt.colorbar(label='Value')
-            # plt.grid(False)
-            # plt.show(block=False)
+            M_new = M_new * self.hyper['p_update_mask_sfsw']
         elif self.attractor_mode == 'pa':
-            M_new = M_new * self.hyper['p_update_pa_mask']
-        elif self.attractor_mode == 'randomsparse':
-            M_new = M_new * self.hyper['p_update_mask_randomsparse']
+            M_new = M_new * self.hyper['p_update_mask_pa']
+        elif self.attractor_mode == 'rs':
+            M_new = M_new * self.hyper['p_update_mask_rs']
         # Store grounded location in attractor network memory with weights M by Hebbian learning of pattern
         M = torch.clamp(self.hyper['lambda'] * M_prev + self.hyper['eta'] * M_new, min=-1, max=1)
         return M

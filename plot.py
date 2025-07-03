@@ -26,10 +26,14 @@ def plot_zero_shot_acc():
     csv_path = 'data/zeroshot/'
 
     files = {
-        csv_path + "fc.csv": "FC",
-        csv_path + "he.csv": "HE",
-        csv_path + "sfsw.csv": "SFSW",
-        csv_path + "pa.csv": "PA"
+        # csv_path + "fc.csv": "fully connected",
+        # csv_path + "fc.csv": "fully connected",
+        csv_path + "fc_100_neurons.csv": "fully connected (100 neurons)",
+        # csv_path + "he.csv": "HE",
+        # csv_path + "sfsw.csv": "SFSW",
+        # csv_path + "pa.csv": "PA",
+        csv_path + "lc.csv": "locally connected (95% sparsity)",
+        csv_path + "rs.csv": "random sparse (95% sparsity)"
     }
 
     plt.figure(figsize=(6, 4))
@@ -50,7 +54,7 @@ def plot_zero_shot_acc():
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("plots/zeroshot_training.png", dpi=DPI)
+    plt.savefig("plots/zeroshot_training_2.png", dpi=DPI)
 
 
 
