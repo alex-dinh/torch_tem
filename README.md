@@ -59,9 +59,9 @@ You will need to specify the correct model run in ```test.py```.
 <!-- CONTACT -->
 ## Contact
 
-[Jacob Bakermans](http://users.ox.ac.uk/~phys1358/) - jacob.bakermans [at] gmail.com
+[Alex Dinh](http://users.ox.ac.uk/~phys1358/) - alexdinh1028 [at] gmail.com
 
-Project Link: [https://github.com/jbakermans/torch_tem](https://github.com/jbakermans/torch_tem)
+Project Link: [https://github.com/alex-dinh/torch_tem](https://github.com/jbakermans/torch_tem)
 
 
 <!-- ACKNOWLEDGEMENTS -->

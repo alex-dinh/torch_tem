@@ -4,7 +4,7 @@ Connectivity masks for various attractor weight topologies.
 - Scale-Free, Small-World (SFSW)
 - Preferential Attachment (PA)
 - Locally Connected (LC)
-- Random
+- Random Sparse (RS)
 '''
 
 import numpy as np

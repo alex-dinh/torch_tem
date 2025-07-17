@@ -14,6 +14,7 @@ import importlib.util
 from tqdm import tqdm
 import argparse
 import multiprocessing
+from torchviz import make_dot
 
 # Own module imports
 import world
@@ -24,12 +25,26 @@ from test import test_zero_shot_acc
 
 # CLI arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--fc', action='store_true', help='Use fully-connected attractor')
-parser.add_argument('--he', action='store_true', help='Use hierarchically embedded attractor')
-parser.add_argument('--sfsw', action='store_true', help='Use scale-free, small-world attractor')
-parser.add_argument('--pa', action='store_true', help='Use preferential attachment attractor')
-parser.add_argument('--lc', action='store_true', help='Use locally connected attractor')
-parser.add_argument('--rs', action='store_true', help='Use random sparse attractor')
+parser.add_argument(
+    '--p_mode',
+    choices=['fc', 'he', 'sfsw', 'pa', 'lc', 'rs'],
+    required=True,
+    help='p connectivity mode'
+)
+
+parser.add_argument(
+    '--g_mode',
+    choices=['fc', 'lc', 'rs'],
+    required=True,
+    help='g connectivity mode'
+)
+
+# parser.add_argument('--fc', action='store_true', help='Use fully-connected attractor')
+# parser.add_argument('--lc', action='store_true', help='Use locally connected attractor')
+# parser.add_argument('--rs', action='store_true', help='Use random sparse attractor')
+# parser.add_argument('--he', action='store_true', help='Use hierarchically embedded attractor')
+# parser.add_argument('--sfsw', action='store_true', help='Use scale-free, small-world attractor')
+# parser.add_argument('--pa', action='store_true', help='Use preferential attachment attractor')
 parser.add_argument('--debug', action='store_true', help='Use to disable tensorboard logging')
 parser.add_argument('--load_checkpoint', action='store_true', help='Use to continue training from model checkpoint')
 args = parser.parse_args()
@@ -45,24 +60,25 @@ torch.manual_seed(0)
 DEVICE = torch.device("cpu")
 print(f"Using device: {DEVICE}")
 
-if args.sfsw:
-    mode = 'sfsw'
+if args.p_mode == 'sfsw':
     print('Attractor mode: scale-free, small-world')
-elif args.he:
-    mode = 'he'
+elif args.p_mode == 'he':
     print('Attractor mode: hierarchical embeddings')
-elif args.pa:
-    mode = 'pa'
+elif args.p_mode == 'pa':
     print('Attractor mode: preferential attachment')
-elif args.lc:
-    mode = 'lc'
+elif args.p_mode == 'lc':
     print('Attractor mode: locally connected (gaussian profile)')
-elif args.rs:
-    mode = 'rs'
+elif args.p_mode == 'rs':
     print('Attractor mode: random sparse')
 else:
-    mode = 'fc'
     print('Attractor mode: fully-connected')
+
+if args.g_mode == 'fc':
+    print('Grid cell RNN mode: fully-connected')
+elif args.g_mode == 'lc':
+    print('Grid cell RNN mode: locally connected (gaussian profile)')
+elif args.g_mode == 'rs':
+    print('Grid cell RNN mode: random sparse')
 
 
 # Either load a trained model and continue training, or start afresh
@@ -70,9 +86,9 @@ load_existing_model = args.load_checkpoint
 if load_existing_model:
     print('Loading model from checkpoint...')
     # Choose which trained model to load
-    date = '2025-07-01'
-    run = '1_rs'
-    i_start = 1000
+    date = '2025-07-15'
+    run = '0'
+    i_start = 6000
 
     # Set all paths from existing run
     run_path, train_path, model_path, save_path, script_path, envs_path = utils.set_directories(date, run)
@@ -90,12 +106,12 @@ if load_existing_model:
     # Manually specify certain parameters (like total num of training iterations)
     # TODO 2025/07/02: torch.save()/load() bug is changing to different values for some params -
     #  manually setting back to original.
-    new_params = {'train_it': 20, 'batch_size': 8, 'eta': 0.5, 'p2g_scale_offset': 0}
+    new_params = {'train_it': 24000, 'batch_size': 4, 'eta': 0.5, 'p2g_scale_offset': 0}
     for key in new_params:
         params[key] = new_params[key]
 
     # Create a new tem model with the loaded parameters
-    tem = model.TEM(params, attractor_mode=mode)
+    tem = model.TEM(params, attractor_mode=args.p_mode, g_rnn_mode=args.g_mode)
     # Load the model weights after training
     model_weights = torch.load(model_path + '/tem_' + str(i_start) + '.pt')
     # Set the model weights to the loaded trained model weights
@@ -124,7 +140,7 @@ else:
     if not args.debug: np.save(os.path.join(save_path, 'params'), params)
 
     # And create instance of TEM with those parameters
-    tem = TEM(params, device=DEVICE, attractor_mode=mode)
+    tem = TEM(params, device=DEVICE, attractor_mode=args.p_mode, g_rnn_mode=args.g_mode)
 
     # Create list of environments that we will sample from during training to provide TEM with trajectory input
     # envs = ['./envs/4x4.json', './envs/5x5.json', './envs/10x10.json']
@@ -157,7 +173,8 @@ environments = [world.World(graph, randomise_observations=True,
                 np.random.choice(envs, params['batch_size'])]
 # Initialise whether a state has been visited for each world
 visited = [[False for _ in range(env.n_locations)] for env in environments]
-# And make a single walk for each environment, where walk lengths can be any between the min and max length to de-sychronise world switches
+# And make a single walk for each environment,
+# where walk lengths can be any between the min and max length to de-synchronise world switches
 walks = [env.generate_walks(params['n_rollout'] * np.random.randint(params['walk_it_min'], params['walk_it_max']), 1)[0]
          for env in environments]
 # Initialise the previous iteration as None: we start from the beginning of the walk, so there is no previous iteration yet
@@ -220,6 +237,12 @@ for i in tqdm(range(i_start, i_end)):
 
     # Forward-pass this walk through the network
     forward = tem(chunk, prev_iter)
+
+    # Visualize computation graph for g_init
+    # params = dict(tem.named_parameters())
+    # dot = make_dot(forward[0].g_inf[0], params=params)
+    # dot.render("computation_graph", format="jpg", view=True)
+    # assert 1==2
 
     # Accumulate loss from forward pass
     loss = torch.tensor(0.0)

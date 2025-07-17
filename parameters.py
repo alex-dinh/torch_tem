@@ -24,11 +24,13 @@ def parameters():
     # -- World parameters
     # Does this world include the standing still action?
     params['has_static_action'] = True
-    # Number of available actions, excluding the stand still action (since standing still has an action vector full of zeros, it won't add to the action vector dimension)
+    # Number of available actions, excluding the stand still action (since standing still has an action vector full of
+    # zeros, it won't add to the action vector dimension)
     params['n_actions'] = 4
     # Bias for explorative behaviour to pick the same action again, to encourage straight walks
     params['explore_bias'] = 2
-    # Rate at which environments with shiny objects occur between training environments. Set to 0 for no shiny environments at all
+    # Rate at which environments with shiny objects occur between training environments.
+    # Set to 0 for no shiny environments at all
     params['shiny_rate'] = 0
     # Discount factor in calculating Q-values to generate shiny object oriented behaviour
     params['shiny_gamma'] = 0.7
@@ -47,11 +49,13 @@ def parameters():
     params['train_it'] = 30000  # default=20000
     # Number of steps to roll out before backpropagation through time
     params['n_rollout'] = 20
-    # Batch size: number of walks for training simultaneously
-    params['batch_size'] = 8  # default=16
-    # Minimum length of a walk on one environment. Walk lengths are sampled uniformly from a window that shifts down until its lower limit is walk_it_min at the end of training
+    # Batch size: number of simultaneously training walks
+    params['batch_size'] = 4  # default=16
+    # Minimum length of a walk on one environment.
+    # Walk lengths are sampled uniformly from a window that shifts down until its lower limit is walk_it_min at the end of training
     params['walk_it_min'] = 25
-    # Maximum length of a walk on one environment. Walk lengths are sampled uniformly from a window that starts with its upper limit at walk_it_max in the beginning of training, then shifts down
+    # Maximum length of a walk on one environment.
+    # Walk lengths are sampled uniformly from a window that starts with its upper limit at walk_it_max in the beginning of training, then shifts down
     params['walk_it_max'] = 300
     # Width of window from which walk lengths are sampled: at any moment, new walk lengths are sampled window_center +/- 0.5 * walk_it_window where window_center shifts down
     params['walk_it_window'] = 0.2 * (params['walk_it_max'] - params['walk_it_min'])
@@ -80,11 +84,13 @@ def parameters():
     params['lambda_it'] = 200
     # Determine how much to use an offset for the standard deviation of the inferred grounded location to reduce its influence
     params['p2g_scale_offset'] = 0
-    # Additional value to offset standard deviation of inferred grounded location when inferring new abstract location, to reduce influence in precision weighted mean
+    # Additional value to offset standard deviation of inferred grounded location when inferring new abstract location,
+    # to reduce influence in precision weighted mean
     params['p2g_sig_val'] = 10000
     # Set number of iterations where offset scaling should be 0.5
     params['p2g_sig_half_it'] = 400
-    # Set how fast offset scaling should decrease - after p2g_sig_half_it + p2g_sig_scale_it the offset scaling is down to ~0.25 (1/(1+e) to be exact)
+    # Set how fast offset scaling should decrease:
+    #   after p2g_sig_half_it + p2g_sig_scale_it the offset scaling is down to ~0.25 (1/(1+e) to be exact)
     params['p2g_sig_scale_it'] = 200
     # Maximum learning rate 
     params['lr_max'] = 9.4e-4
@@ -114,14 +120,18 @@ def parameters():
 
     # ---- Neuron and module parameters
     # Neurons for subsampled entorhinal abstract location f_g(g) for each frequency module
-    # params['n_g_subsampled'] = [10, 10, 8, 6, 6]  # default = [10, 10, 8, 6, 6], gives 400 neurons
-    params['n_g_subsampled'] = [3, 3, 2, 1, 1]
-    # Neurons for object vector cells. Neurons will get new modules if object vector cell modules are separated; otherwise, they are added to existing abstract location modules.
-    # a) No additional modules, no additional object vector neurons (e.g. when not using shiny environments): [0 for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
-    # b) No additional modules, but n additional object vector neurons in each grid module: [n for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
+    params['n_g_subsampled'] = [10, 10, 8, 6, 6]  # default = [10, 10, 8, 6, 6], gives 400 neurons in attractor
+    # params['n_g_subsampled'] = [3, 3, 2, 1, 1]
+    # Neurons for object vector cells. Neurons will get new modules if object vector cell modules are separated;
+    # otherwise, they are added to existing abstract location modules.
+    # a) No additional modules, no additional object vector neurons (e.g. when not using shiny environments):
+    #   [0 for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
+    # b) No additional modules, but n additional object vector neurons in each grid module:
+    #   [n for _ in range(len(params['n_g_subsampled']))], and separate_ovc set to False
     # c) Additional separate object vector modules, with n, m neurons: [n, m], and separate_ovc set to True
     params['n_ovc'] = [0 for _ in range(len(params['n_g_subsampled']))]
-    # Add neurons for object vector cells. Add new modules if object vector cells get separate modules, or else add neurons to existing modules
+    # Add neurons for object vector cells. Add new modules if object vector cells get separate modules,
+    # or else add neurons to existing modules
     params['n_g_subsampled'] = params['n_g_subsampled'] + params['n_ovc'] if params['separate_ovc'] else \
         [grid + ovc for grid, ovc in zip(params['n_g_subsampled'], params['n_ovc'])]
     # Number of hierarchical frequency modules for object vector cells
@@ -140,7 +150,8 @@ def parameters():
     params['n_x_f'] = [params['n_x_c'] for _ in range(params['n_f'])]
     # Neurons for hippocampal grounded location p for each frequency
     params['n_p'] = [g * x for g, x in zip(params['n_g_subsampled'], params['n_x_f'])]
-    # Initial frequencies of each module. For ease of interpretation (higher number = higher frequency) this is 1 - the frequency as James uses it
+    # Initial frequencies of each module. For ease of interpretation (higher number = higher frequency)
+    # this is 1 - the frequency as James uses it
     params['f_initial'] = [0.99, 0.3, 0.09, 0.03, 0.01]
     # Add frequencies of object vector cell modules, if object vector cells get separate modules
     params['f_initial'] = params['f_initial'] + params['f_initial'][0:params['n_f_ovc']]
@@ -211,7 +222,8 @@ def parameters():
         sum(params['n_p']), sigma=10, target_sparsity=0.95, allow_self_connections=True, seed=42
     )
 
-    # During memory retrieval, hierarchical memory retrieval of grounded location is implemented by early-stopping low-frequency memory updates, using a mask for updates at every retrieval iteration
+    # During memory retrieval, hierarchical memory retrieval of grounded location is implemented by
+    # early-stopping low-frequency memory updates, using a mask for updates at every retrieval iteration
     params['p_retrieve_mask_inf'] = [torch.zeros(sum(params['n_p']), device=DEVICE) for _ in
                                      range(params['i_attractor'])]
     params['p_retrieve_mask_gen'] = [torch.zeros(sum(params['n_p']), device=DEVICE) for _ in
@@ -224,16 +236,24 @@ def parameters():
             # Update masks up to maximum iteration
             for i in range(max_i):
                 mask[i][n_p[f]:n_p[f + 1]] = 1.0
-                # In path integration, abstract location frequency modules can influence the transition of other modules hierarchically (low to high). Set for each frequency module from which other frequencies input is received
+    # In path integration, abstract location frequency modules can influence the transition of other modules
+    # hierarchically (low to high).
+    # Set for each frequency module from which other frequencies input is received
     params['g_connections'] = [
-        [params['f_initial'][f_from] <= params['f_initial'][f_to] for f_from in range(params['n_f_g'])] + [False for _
-                                                                                                           in range(
-                params['n_f_ovc'])] for f_to in range(params['n_f_g'])]
-    # Add connections for separate object vector cell module: only between object vector cell modules - and make those hierarchical too
+        [params['f_initial'][f_from] <= params['f_initial'][f_to] for f_from in range(params['n_f_g'])] +
+        [False for _ in range(params['n_f_ovc'])] for f_to in range(params['n_f_g'])
+    ]
+
+    # Add connections for separate object vector cell module:
+    #   only between object vector cell modules - and make those hierarchical too
     params['g_connections'] = params['g_connections'] + [
-        [False for _ in range(params['n_f_g'])] + [params['f_initial'][f_from] <= params['f_initial'][f_to] for f_from
-                                                   in range(params['n_f_g'], params['n_f'])] for f_to in
-        range(params['n_f_g'], params['n_f'])]
+        [False for _ in range(params['n_f_g'])] +
+        [params['f_initial'][f_from] <= params['f_initial'][f_to] for f_from in range(params['n_f_g'], params['n_f'])]
+        for f_to in range(params['n_f_g'], params['n_f'])
+    ]
+
+    # for g experiments, set all to True
+    # params['g_connections'] = [[True for _ in range(5)] for _ in range(5)]
 
     # ---- Static matrices            
     # Matrix for repeating abstract location g to do outer product with sensory information x with elementwise product. Also see (*) note at bottom
@@ -241,14 +261,16 @@ def parameters():
         torch.tensor(np.kron(np.eye(params['n_g_subsampled'][f]), np.ones((1, params['n_x_f'][f]))), dtype=torch.float,
                      device=DEVICE)
         for f in range(params['n_f'])]
-    # Matrix for tiling sensory observation x to do outer product with abstract with elementwise product. Also see (*) note at bottom
+    # Matrix for tiling sensory observation x to do outer product with abstract with elementwise product.
+    # Also see (*) note at bottom
     params['W_tile'] = [
         torch.tensor(np.kron(np.ones((1, params['n_g_subsampled'][f])), np.eye(params['n_x_f'][f])), dtype=torch.float,
                      device=DEVICE)
         for f in range(params['n_f'])]
     # Table for converting one-hot to two-hot compressed representation 
     params['two_hot_table'] = [[0] * (params['n_x_c'] - 2) + [1] * 2]
-    # We need a compressed code for each possible observation, but it's impossible to have more compressed codes than "n_x_c choose 2"
+    # We need a compressed code for each possible observation,
+    # but it's impossible to have more compressed codes than "n_x_c choose 2"
     for i in range(1, min(int(comb(params['n_x_c'], 2)), params['n_x'])):
         # Copy previous code
         code = params['two_hot_table'][-1].copy()
@@ -264,7 +286,8 @@ def parameters():
         params['two_hot_table'].append(code)
     # Convert each code to column vector pytorch tensor
     params['two_hot_table'] = [torch.tensor(code, device=DEVICE) for code in params['two_hot_table']]
-    # Downsampling matrix to go from grid cells to compressed grid cells for indexing memories by simply taking only the first n_g_subsampled grid cells
+    # Downsampling matrix to go from grid cells to compressed grid cells for indexing memories by simply taking only
+    # the first n_g_subsampled grid cells
     params['g_downsample'] = [
         torch.cat([torch.eye(dim_out, dtype=torch.float, device=DEVICE),
                    torch.zeros((dim_in - dim_out, dim_out), dtype=torch.float, device=DEVICE)])
